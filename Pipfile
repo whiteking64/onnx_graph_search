@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+netron = "*"
+pydot = "*"
+jupytext = "*"
+jupyter-contrib-nbextensions = "*"
+jupyter-nbextensions-configurator = "*"
+environment-kernels = "*"
+onnx = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
