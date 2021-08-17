@@ -21,11 +21,6 @@ def jsonize_mnist_onnx(model_path):
         print(j, file=f)
 
 
-def get_type_list(network_dict, key):
-    assert key in ["input", "output"]
-    return [network_dict[name]["opType"] for name in network_dict[key]]
-
-
 # model_path = "./resnet18-v2-7.onnx"
 # jsonize_mnist_onnx(model_path)
 
