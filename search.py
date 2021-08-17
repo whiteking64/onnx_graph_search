@@ -12,6 +12,7 @@ import networkx as nx
 import onnx
 from google.protobuf.json_format import MessageToJson
 from networkx.drawing.nx_pydot import graphviz_layout
+from pprint import pprint
 
 
 def jsonize_mnist_onnx(model_path):
@@ -19,6 +20,13 @@ def jsonize_mnist_onnx(model_path):
     j = MessageToJson(model)
     with open("./resnet18.json", "w") as f:
         print(j, file=f)
+
+
+def add_empty_label_list(dict_nodes):
+    for k, v in dict_nodes.items():
+        v["s_label"] = []
+        dict_nodes[k] = v
+    return dict_nodes
 
 
 # model_path = "./resnet18-v2-7.onnx"
@@ -44,7 +52,7 @@ for i in range(len(node_list)):
         "opType": node_list[i]["opType"],
     }
     graph.add_node(node_name)
-
+network_nodes = add_empty_label_list(network_nodes)
 
 edges = []
 for k, v in network_nodes.items():
@@ -96,6 +104,7 @@ query_nodes = {
         "opType": "Add",
     },
 }
+query_label = "resblock"
 
 assert "src" in query_nodes
 query_graph = nx.DiGraph()
@@ -128,4 +137,8 @@ for i, matched in enumerate(subgraph_list):
         # print(f"\t{network_nodes[k]['opType']}, {query_nodes[v]['opType']}")
     if is_same_type:
         subgraph_list_matched.append(matched)
+        # append label to each matched keys
+        for k in matched.keys():
+            network_nodes[k]["s_label"].append(query_label)
 print(len(subgraph_list_matched))
+pprint(network_nodes)
