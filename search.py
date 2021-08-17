@@ -4,7 +4,7 @@
     - Do some refactor.
 """
 
-
+import gc
 import json
 
 import matplotlib.pyplot as plt
@@ -36,6 +36,14 @@ def save_graph(graph, save_name):
     plt.clf()
 
 
+def add_edges(graph, dict_nodes):
+    for k, v in dict_nodes.items():
+        for _k, _v in dict_nodes.items():
+            if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
+                graph.add_edge(k, _k)
+    return graph
+
+
 # model_path = "./resnet18-v2-7.onnx"
 # jsonize_mnist_onnx(model_path)
 
@@ -60,16 +68,11 @@ for i in range(len(node_list)):
     }
     graph.add_node(node_name)
 network_nodes = add_empty_label_list(network_nodes)
+del node_list
+gc.collect()
 
-edges = []
-for k, v in network_nodes.items():
-    for _k, _v in network_nodes.items():
-        if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
-            edges.append([k, _k])
-            graph.add_edge(k, _k)
-print(len(edges))
-
-save_graph(graph, "graph.png")
+graph = add_edges(graph, network_nodes)
+# save_graph(graph, "graph.png")
 
 query_nodes = {
     "src": {
@@ -115,12 +118,8 @@ query_graph = nx.DiGraph()
 for key in query_nodes.keys():
     query_graph.add_node(key)
 
-for k, v in query_nodes.items():
-    for _k, _v in query_nodes.items():
-        if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
-            query_graph.add_edge(k, _k)
-
-save_graph(query_graph, "query_graph.png")
+query_graph = add_edges(query_graph, query_nodes)
+# save_graph(query_graph, "query_graph.png")
 
 GM = nx.algorithms.isomorphism.DiGraphMatcher(graph, query_graph)
 subgraph_list = list(GM.subgraph_isomorphisms_iter())
