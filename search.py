@@ -111,7 +111,7 @@ query_nodes = {
         "opType": "Add",
     },
 }
-query_label = "resblock"
+query_label_base = "resblock"
 
 assert "src" in query_nodes
 query_graph = nx.DiGraph()
@@ -137,6 +137,7 @@ for i, matched in enumerate(subgraph_list):
         # print(f"\t{network_nodes[k]['opType']}, {query_nodes[v]['opType']}")
     if is_same_type:
         subgraph_list_matched.append(matched)
+        query_label = f"{query_label_base}_{i}"
         # append label to each matched keys
         for k in matched.keys():
             network_nodes[k]["s_label"].append(query_label)
