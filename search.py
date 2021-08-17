@@ -1,6 +1,5 @@
 """Python script for searching an identical subgraph in an onnx model
 * TODO:
-    - The search function is incomplete, fix it.
     - Do some refactor.
 """
 
@@ -42,6 +41,27 @@ def add_edges(graph, dict_nodes):
             if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
                 graph.add_edge(k, _k)
     return graph
+
+
+def search_basic(src_graph, query_graph):
+    GM = nx.algorithms.isomorphism.DiGraphMatcher(src_graph, query_graph)
+    return list(GM.subgraph_isomorphisms_iter())
+
+
+def search_type(subgraph_map_list, src_nodes_dict, query_nodes_dict):
+    subgraph_list_matched = []
+    for i, matched in enumerate(subgraph_map_list):
+        is_same_type = True
+        for k, v in matched.items():
+            if v == "src":
+                continue
+            if src_nodes_dict[k]["opType"] != query_nodes_dict[v]["opType"]:
+                is_same_type = False
+                break
+            # print(f"\t{src_nodes_dict[k]['opType']}, {query_nodes_dict[v]['opType']}")
+        if is_same_type:
+            subgraph_list_matched.append(matched)
+    return subgraph_list_matched
 
 
 # model_path = "./resnet18-v2-7.onnx"
@@ -121,25 +141,16 @@ for key in query_nodes.keys():
 query_graph = add_edges(query_graph, query_nodes)
 # save_graph(query_graph, "query_graph.png")
 
-GM = nx.algorithms.isomorphism.DiGraphMatcher(graph, query_graph)
-subgraph_list = list(GM.subgraph_isomorphisms_iter())
+subgraph_list = search_basic(graph, query_graph)
 print(len(subgraph_list))
 
-subgraph_list_matched = []
-for i, matched in enumerate(subgraph_list):
-    is_same_type = True
-    for k, v in matched.items():
-        if v == "src":
-            continue
-        if network_nodes[k]["opType"] != query_nodes[v]["opType"]:
-            is_same_type = False
-            break
-        # print(f"\t{network_nodes[k]['opType']}, {query_nodes[v]['opType']}")
-    if is_same_type:
-        subgraph_list_matched.append(matched)
-        query_label = f"{query_label_base}_{i}"
-        # append label to each matched keys
-        for k in matched.keys():
-            network_nodes[k]["s_label"].append(query_label)
+subgraph_list_matched = search_type(subgraph_list, network_nodes, query_nodes)
 print(len(subgraph_list_matched))
+
+for i, matched in enumerate(subgraph_list_matched):
+    query_label = f"{query_label_base}_{i}"
+    # append label to each matched keys
+    for k in matched.keys():
+        network_nodes[k]["s_label"].append(query_label)
+
 pprint(network_nodes)
