@@ -102,6 +102,7 @@ query_nodes = {
     },
 }
 
+assert "src" in query_nodes
 query_graph = nx.DiGraph()
 for key in query_nodes.keys():
     query_graph.add_node(key)
@@ -117,4 +118,19 @@ plt.savefig("query_graph.png", bbox_inches="tight")
 plt.clf()
 
 GM = nx.algorithms.isomorphism.DiGraphMatcher(graph, query_graph)
-print(GM.subgraph_is_isomorphic())
+subgraph_list = list(GM.subgraph_isomorphisms_iter())
+print(len(subgraph_list))
+
+subgraph_list_matched = []
+for i, matched in enumerate(subgraph_list):
+    is_same_type = True
+    for k, v in matched.items():
+        if v == "src":
+            continue
+        if network_nodes[k]["opType"] != query_nodes[v]["opType"]:
+            is_same_type = False
+            break
+        # print(f"\t{network_nodes[k]['opType']}, {query_nodes[v]['opType']}")
+    if is_same_type:
+        subgraph_list_matched.append(matched)
+print(len(subgraph_list_matched))
