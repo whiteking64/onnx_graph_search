@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import onnx
 from google.protobuf.json_format import MessageToJson
+from networkx.drawing.nx_pydot import graphviz_layout
 
 
 def jsonize_mnist_onnx(model_path):
@@ -98,8 +99,10 @@ for k, v in network_nodes.items():
             graph.add_edge(k, _k)
 print(len(edges))
 
-nx.draw(graph, node_size=100, arrows=True, with_labels=False)
+pos = graphviz_layout(graph, prog="dot")
+nx.draw(graph, pos, node_size=100, arrows=True, with_labels=False)
 plt.savefig("graph.png", bbox_inches="tight")
+plt.clf()
 
 query_nodes = {
     "src": {
@@ -137,11 +140,6 @@ query_nodes = {
         "output": ["output"],
         "opType": "Add",
     },
-    "dst": {
-        "input": ["output"],
-        "output": ["output"],
-        "opType": "None",
-    },
 }
 
 query_graph = nx.DiGraph()
@@ -153,8 +151,10 @@ for k, v in query_nodes.items():
         if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
             query_graph.add_edge(k, _k)
 
-nx.draw(query_graph, node_size=100, arrows=True, with_labels=False)
+pos = graphviz_layout(query_graph, prog="dot")
+nx.draw(query_graph, pos, node_size=100, arrows=True, with_labels=False)
 plt.savefig("query_graph.png", bbox_inches="tight")
+plt.clf()
 
 GM = nx.algorithms.isomorphism.DiGraphMatcher(graph, query_graph)
 print(GM.subgraph_is_isomorphic())
