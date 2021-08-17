@@ -26,46 +26,6 @@ def get_type_list(network_dict, key):
     return [network_dict[name]["opType"] for name in network_dict[key]]
 
 
-class Node:
-    def __init__(self, node_name):
-        self.node_name = node_name
-        self.neighbors = []
-
-    def add_neighbor(self, neighbor):
-        assert len(self.neighbors) <= 2
-        if neighbor not in self.neighbors:
-            self.neighbors.append(neighbor)
-        assert len(self.neighbors) <= 2
-
-    def __str__(self):
-        print_str = self.node_name
-        for neighbor in self.neighbors:
-            print_str += f"\n\t-> {neighbor}"
-        return print_str
-
-
-class Graph:
-    def __init__(self):
-        self.nodes = {}
-
-    def add_node(self, node_name):
-        self.nodes[node_name] = Node(node_name)
-
-    def get_node(self, node_name):
-        return self.nodes.get(node_name, None)
-
-    def add_edge(self, src, dst):
-        if src not in self.nodes:
-            self.add_node(src)
-        if dst not in self.nodes:
-            self.add_node(dst)
-
-        self.nodes[src].add_neighbor(dst)
-
-    def __iter__(self):
-        return iter(self.nodes.values())
-
-
 # model_path = "./resnet18-v2-7.onnx"
 # jsonize_mnist_onnx(model_path)
 
