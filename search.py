@@ -29,6 +29,13 @@ def add_empty_label_list(dict_nodes):
     return dict_nodes
 
 
+def save_graph(graph, save_name):
+    pos = graphviz_layout(graph, prog="dot")
+    nx.draw(graph, pos, node_size=100, arrows=True, with_labels=False)
+    plt.savefig(save_name, bbox_inches="tight")
+    plt.clf()
+
+
 # model_path = "./resnet18-v2-7.onnx"
 # jsonize_mnist_onnx(model_path)
 
@@ -62,10 +69,7 @@ for k, v in network_nodes.items():
             graph.add_edge(k, _k)
 print(len(edges))
 
-pos = graphviz_layout(graph, prog="dot")
-nx.draw(graph, pos, node_size=100, arrows=True, with_labels=False)
-plt.savefig("graph.png", bbox_inches="tight")
-plt.clf()
+save_graph(graph, "graph.png")
 
 query_nodes = {
     "src": {
@@ -116,10 +120,7 @@ for k, v in query_nodes.items():
         if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
             query_graph.add_edge(k, _k)
 
-pos = graphviz_layout(query_graph, prog="dot")
-nx.draw(query_graph, pos, node_size=100, arrows=True, with_labels=False)
-plt.savefig("query_graph.png", bbox_inches="tight")
-plt.clf()
+save_graph(query_graph, "query_graph.png")
 
 GM = nx.algorithms.isomorphism.DiGraphMatcher(graph, query_graph)
 subgraph_list = list(GM.subgraph_isomorphisms_iter())
