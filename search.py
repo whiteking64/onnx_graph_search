@@ -6,8 +6,9 @@
 
 
 import json
-from collections import defaultdict
 
+import matplotlib.pyplot as plt
+import networkx as nx
 import onnx
 from google.protobuf.json_format import MessageToJson
 
@@ -76,7 +77,7 @@ print(data["graph"]["name"])
 print(len(data["graph"]["node"]))
 node_list = data["graph"]["node"]
 
-graph = Graph()
+graph = nx.DiGraph()
 
 network_nodes = {}
 for i in range(len(node_list)):
@@ -97,8 +98,8 @@ for k, v in network_nodes.items():
             graph.add_edge(k, _k)
 print(len(edges))
 
-# for node in graph:
-#     print(node)
+nx.draw(graph, node_size=100, arrows=True, with_labels=False)
+plt.savefig("graph.png", bbox_inches="tight")
 
 query_nodes = {
     "src": {
@@ -143,7 +144,7 @@ query_nodes = {
     },
 }
 
-query_graph = Graph()
+query_graph = nx.DiGraph()
 for key in query_nodes.keys():
     query_graph.add_node(key)
 
@@ -152,45 +153,8 @@ for k, v in query_nodes.items():
         if k != _k and len(set(v["output"]) & set(_v["input"])) > 0:
             query_graph.add_edge(k, _k)
 
-for node in query_graph:
-    print(node)
+nx.draw(query_graph, node_size=100, arrows=True, with_labels=False)
+plt.savefig("query_graph.png", bbox_inches="tight")
 
-
-def is_graph_identical(a, b):
-    if a is None and b is None:
-        return True
-
-    if a is not None and b is not None:
-        return (
-            (a.data == b.data)
-            and is_graph_identical(a.left, b.left)
-            and is_graph_identical(a.right, b.right)
-        )
-    return False
-
-
-def check_subgraph(start_node_name):
-    start_node = graph.get_node(start_node_name)
-    node_queue = start_node.neighbors
-    start_node_query = query_graph.get_node("src")
-    query_node_queue = start_node_query.neighbors
-
-    is_subgraph = True
-    while query_node_queue:
-        if len(node_queue) == 0:
-            is_subgraph = False
-            break
-        node_p = node_queue.pop()
-        node_q = query_node_queue.pop()
-        if network_nodes[node_p]["opType"] != query_nodes[node_q]["opType"]:
-            is_subgraph = False
-            break
-        node_queue += graph.get_node(node_p).neighbors
-        query_node_queue += query_graph.get_node(node_q).neighbors
-
-    return is_subgraph
-
-
-for node_name in network_nodes.keys():
-    is_subgraph = check_subgraph(node_name)
-    print(is_subgraph)
+GM = nx.algorithms.isomorphism.DiGraphMatcher(graph, query_graph)
+print(GM.subgraph_is_isomorphic())
