@@ -1,2 +1,4 @@
 resnet18.json
 resnet18-v2-7.onnx
+
+__pycache__

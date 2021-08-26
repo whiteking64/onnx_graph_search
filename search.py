@@ -1,6 +1,4 @@
-"""Python script for searching an identical subgraph in an onnx model
-* TODO:
-    - Do some refactor.
+"""Python script for searching an identical subgraph in an onnx mode
 """
 
 import gc
@@ -12,6 +10,8 @@ import onnx
 from google.protobuf.json_format import MessageToJson
 from networkx.drawing.nx_pydot import graphviz_layout
 from pprint import pprint
+
+import template_subgraphs
 
 
 def jsonize_mnist_onnx(model_path):
@@ -58,7 +58,6 @@ def search_type(subgraph_map_list, src_nodes_dict, query_nodes_dict):
             if src_nodes_dict[k]["opType"] != query_nodes_dict[v]["opType"]:
                 is_same_type = False
                 break
-            # print(f"\t{src_nodes_dict[k]['opType']}, {query_nodes_dict[v]['opType']}")
         if is_same_type:
             subgraph_list_matched.append(matched)
     return subgraph_list_matched
@@ -94,43 +93,10 @@ gc.collect()
 graph = add_edges(graph, network_nodes)
 # save_graph(graph, "graph.png")
 
-query_nodes = {
-    "src": {
-        "input": ["input"],
-        "output": ["input"],
-        "opType": "None",
-    },
-    "conv_1": {
-        "input": ["input"],
-        "output": ["bn_1"],
-        "opType": "Conv",
-    },
-    "bn_1": {
-        "input": ["bn_1"],
-        "output": ["relu_1"],
-        "opType": "BatchNormalization",
-    },
-    "relu_1": {
-        "input": ["relu_1"],
-        "output": ["conv_2"],
-        "opType": "Relu",
-    },
-    "conv_2": {
-        "input": ["conv_2"],
-        "output": ["add_in_1"],
-        "opType": "Conv",
-    },
-    "conv_3": {
-        "input": ["input"],
-        "output": ["add_in_2"],
-        "opType": "Conv",
-    },
-    "add_1": {
-        "input": ["add_in_1", "add_in_2"],
-        "output": ["output"],
-        "opType": "Add",
-    },
-}
+# query_nodes = template_subgraphs.resblock_plain
+# del query_nodes["relu_2"]
+# query_nodes["add_1"]["output"] = ["output"]
+query_nodes = template_subgraphs.resblock_postact
 query_label_base = "resblock"
 
 assert "src" in query_nodes
@@ -153,4 +119,4 @@ for i, matched in enumerate(subgraph_list_matched):
     for k in matched.keys():
         network_nodes[k]["s_label"].append(query_label)
 
-pprint(network_nodes)
+# pprint(network_nodes)
