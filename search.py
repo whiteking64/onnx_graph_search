@@ -3,6 +3,7 @@
 
 import argparse
 import gc
+import importlib
 import json
 from typing import DefaultDict
 
@@ -43,6 +44,13 @@ parser.add_argument(
     help="template subgraph architecture: "
     + " | ".join(template_subgraph_names)
     + " (default: [resblock_plain])",
+)
+parser.add_argument(
+    "-p",
+    "--pys",
+    metavar="PYTHON_FILES",
+    nargs="*",
+    help="python files of query subgraph definitions",
 )
 parser.add_argument(
     "-v", "--verbose", dest="verbose", action="store_true", help="verbose mode"
@@ -125,9 +133,9 @@ def search_subgraph(graph, subgraph):
 
 args = parser.parse_args()
 print(vars(args))
-if not args.jsons and not args.templates:
+if not args.jsons and not args.templates and not args.pys:
     raise ValueError(
-        "Either json files or template subgraph variables must be specified!"
+        "One of json files, template subgraph variables or python files must be specified!"
     )
 
 with open(args.model, "r") as f:
@@ -162,9 +170,7 @@ graph = add_edges(graph, network_nodes)
 query_dict = {}
 label_counter = 0
 if args.templates:
-    print(args.templates)
     templates = set(args.templates)
-    # print(templates)
     for template_name in templates:
         label = f"label_{label_counter}"
         query_dict[label] = template_subgraphs.__dict__[template_name]
@@ -177,11 +183,18 @@ if args.jsons:
         label = f"label_{label_counter}"
         query_dict[label] = tmp_data
         label_counter += 1
-# TODO: support loading custom subgraph definitions from pytho files
-query_node_resblock_2 = template_subgraphs.resblock_plain
-del query_node_resblock_2["relu_2"]
-query_node_resblock_2["add_1"]["output"] = ["output"]
-query_dict[f"label_{label_counter}"] = query_node_resblock_2
+if args.pys:
+    for py_file in set(args.pys):
+        try:
+            spec = importlib.util.spec_from_file_location("module.name", py_file)
+            foo = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(foo)
+        except:
+            raise ValueError("Python files load error.")
+        for subgraph_name in foo.__all__:
+            label = f"label_{label_counter}"
+            query_dict[label] = foo.__dict__[subgraph_name]
+            label_counter += 1
 
 subgraph_list_matched_dict = {}
 for label, subgraph in query_dict.items():
