@@ -26,6 +26,7 @@ parser.add_argument(
     "--model",
     metavar="MODEL",
     required=True,
+    type=str,
     help="source model to be searched",
 )
 parser.add_argument(
@@ -33,6 +34,7 @@ parser.add_argument(
     "--jsons",
     metavar="SUBGRAPHS",
     nargs="*",
+    type=str,
     help="json files of query subgraph definitions",
 )
 parser.add_argument(
@@ -40,6 +42,7 @@ parser.add_argument(
     "--templates",
     metavar="TEMPLATE",
     nargs="*",
+    type=str,
     default=["resblock_plain"],
     choices=template_subgraph_names,
     help="template subgraph architecture: "
@@ -51,10 +54,17 @@ parser.add_argument(
     "--pys",
     metavar="PYTHON_FILES",
     nargs="*",
+    type=str,
     help="python files of query subgraph definitions",
 )
 parser.add_argument(
     "-v", "--verbose", dest="verbose", action="store_true", help="verbose mode"
+)
+parser.add_argument(
+    "--save_src_graph_path",
+    metavar="SAVE_SRC_GRAPH_PATH",
+    type=str,
+    help="path to save the source graph with matched subgraph label(s)",
 )
 
 
@@ -247,6 +257,9 @@ def main():
                 network_nodes[k]["s_label"].append(f"{label}_{i}")
 
     # pprint(network_nodes)
+    if args.save_src_graph_path:
+        with open(args.save_src_graph_path, "w") as f:
+            json.dump(network_nodes, f)
 
 
 if __name__ == "__main__":
