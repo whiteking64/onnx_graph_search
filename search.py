@@ -3,6 +3,7 @@
 
 import gc
 import json
+from typing import DefaultDict
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -63,6 +64,24 @@ def search_type(subgraph_map_list, src_nodes_dict, query_nodes_dict):
     return subgraph_list_matched
 
 
+def search_subgraph(graph, subgraph):
+    assert "src" in subgraph
+    query_graph = nx.DiGraph()
+    for key in subgraph.keys():
+        query_graph.add_node(key)
+
+    query_graph = add_edges(query_graph, subgraph)
+    # save_graph(query_graph, "query_graph.png")
+
+    subgraph_list = search_basic(graph, query_graph)
+    print(len(subgraph_list))
+
+    subgraph_list_matched = search_type(subgraph_list, network_nodes, subgraph)
+    print(len(subgraph_list_matched))
+
+    return subgraph_list_matched
+
+
 # model_path = "./resnet18-v2-7.onnx"
 # jsonize_mnist_onnx(model_path)
 
@@ -93,30 +112,24 @@ gc.collect()
 graph = add_edges(graph, network_nodes)
 # save_graph(graph, "graph.png")
 
-# query_nodes = template_subgraphs.resblock_plain
-# del query_nodes["relu_2"]
-# query_nodes["add_1"]["output"] = ["output"]
-query_nodes = template_subgraphs.resblock_postact
-query_label_base = "resblock"
+query_node_resblock_2 = template_subgraphs.resblock_plain
+del query_node_resblock_2["relu_2"]
+query_node_resblock_2["add_1"]["output"] = ["output"]
 
-assert "src" in query_nodes
-query_graph = nx.DiGraph()
-for key in query_nodes.keys():
-    query_graph.add_node(key)
+query_dict = {
+    "resblock_1": template_subgraphs.resblock_postact,
+    "resblock_2": query_node_resblock_2,
+}
 
-query_graph = add_edges(query_graph, query_nodes)
-# save_graph(query_graph, "query_graph.png")
+subgraph_list_matched_dict = {}
+for label, subgraph in query_dict.items():
+    subgraph_list_matched = search_subgraph(graph, subgraph)
+    subgraph_list_matched_dict[label] = subgraph_list_matched
 
-subgraph_list = search_basic(graph, query_graph)
-print(len(subgraph_list))
-
-subgraph_list_matched = search_type(subgraph_list, network_nodes, query_nodes)
-print(len(subgraph_list_matched))
-
-for i, matched in enumerate(subgraph_list_matched):
-    query_label = f"{query_label_base}_{i}"
+for label, subgraph_list in subgraph_list_matched_dict.items():
     # append label to each matched keys
-    for k in matched.keys():
-        network_nodes[k]["s_label"].append(query_label)
+    for i, matched in enumerate(subgraph_list):
+        for k in matched.keys():
+            network_nodes[k]["s_label"].append(f"{label}_{i}")
 
 # pprint(network_nodes)
