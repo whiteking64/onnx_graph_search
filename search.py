@@ -128,8 +128,25 @@ def search_subgraph(graph, subgraph):
     return subgraph_list_matched
 
 
-# model_path = "./resnet18-v2-7.onnx"
-# jsonize_mnist_onnx(model_path)
+def prepare_source_graph(node_list):
+    graph = nx.DiGraph()
+    network_nodes = {}
+    for i in range(len(node_list)):
+        node_name = node_list[i]["name"]
+        network_nodes[node_name] = {
+            "input": node_list[i]["input"],
+            "output": node_list[i]["output"],
+            "opType": node_list[i]["opType"],
+        }
+        graph.add_node(node_name)
+    network_nodes = add_empty_label_list(network_nodes)
+    del node_list
+    gc.collect()
+
+    graph = add_edges(graph, network_nodes)
+
+    return graph, network_nodes
+
 
 args = parser.parse_args()
 print(vars(args))
@@ -138,31 +155,13 @@ if not args.jsons and not args.templates and not args.pys:
         "One of json files, template subgraph variables or python files must be specified!"
     )
 
+# model_path = "./resnet18-v2-7.onnx"
+# jsonize_mnist_onnx(model_path)
 with open(args.model, "r") as f:
     data = json.load(f)
-
-# print(data.keys())
-# print(data["graph"].keys())
-# print(data["graph"]["name"])
-# print(len(data["graph"]["node"]))
+# Prepare source graph
 node_list = data["graph"]["node"]
-
-graph = nx.DiGraph()
-
-network_nodes = {}
-for i in range(len(node_list)):
-    node_name = node_list[i]["name"]
-    network_nodes[node_name] = {
-        "input": node_list[i]["input"],
-        "output": node_list[i]["output"],
-        "opType": node_list[i]["opType"],
-    }
-    graph.add_node(node_name)
-network_nodes = add_empty_label_list(network_nodes)
-del node_list
-gc.collect()
-
-graph = add_edges(graph, network_nodes)
+graph, network_nodes = prepare_source_graph(node_list)
 # save_graph(graph, "graph.png")
 
 # Collect query subgraphs
