@@ -136,7 +136,7 @@ def search_type(subgraph_map_list, src_nodes_dict, query_nodes_dict):
     return subgraph_list_matched
 
 
-def search_subgraph(graph, subgraph, **kwargs):
+def search_subgraph(graph, subgraph, src_nodes_dict, **kwargs):
     verbose = kwargs.get("verbose", False)
     assert subgraph.get("src", {}) == {
         "input": ["input"],
@@ -154,7 +154,7 @@ def search_subgraph(graph, subgraph, **kwargs):
     if verbose:
         logger.info(f"\tStructure match: {len(subgraph_list)}")
 
-    subgraph_list_matched = search_type(subgraph_list, network_nodes, subgraph)
+    subgraph_list_matched = search_type(subgraph_list, src_nodes_dict, subgraph)
     if verbose:
         logger.info(f"\tType match: {len(subgraph_list_matched)}")
 
@@ -181,68 +181,74 @@ def prepare_source_graph(node_list):
     return graph, network_nodes
 
 
-logger = setup_logger(__name__)
-
-args = parser.parse_args()
-verbose = args.verbose
-if verbose:
-    logger.info(vars(args))
-if not args.jsons and not args.templates and not args.pys:
-    raise ValueError(
-        "One of json files, template subgraph variables or python files must be specified!"
-    )
-
-# model_path = "./resnet18-v2-7.onnx"
-# jsonize_mnist_onnx(model_path)
-with open(args.model, "r") as f:
-    data = json.load(f)
-# Prepare source graph
-node_list = data["graph"]["node"]
-graph, network_nodes = prepare_source_graph(node_list)
-# save_graph(graph, "graph.png")
-
-# Collect query subgraphs
-# NOTE: currently labels are given automatically and incrementally
-query_dict = {}
-label_counter = 0
-if args.templates:
-    templates = set(args.templates)
-    for template_name in templates:
-        label = f"label_{label_counter}"
-        query_dict[label] = template_subgraphs.__dict__[template_name]
-        label_counter += 1
-if args.jsons:
-    for json_path in args.jsons:
-        with open(json_path, "r") as f:
-            tmp_data = json.load(f)
-        assert isinstance(tmp_data, dict), "subgraph definition incorrect."
-        label = f"label_{label_counter}"
-        query_dict[label] = tmp_data
-        label_counter += 1
-if args.pys:
-    for py_file in set(args.pys):
-        try:
-            spec = importlib.util.spec_from_file_location("module.name", py_file)
-            foo = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(foo)
-        except:
-            raise ValueError("Python files load error.")
-        for subgraph_name in foo.__all__:
-            label = f"label_{label_counter}"
-            query_dict[label] = foo.__dict__[subgraph_name]
-            label_counter += 1
-
-subgraph_list_matched_dict = {}
-for label, subgraph in query_dict.items():
+def main():
+    args = parser.parse_args()
+    verbose = args.verbose
     if verbose:
-        logger.info(f"Searching query label: {label} ...")
-    subgraph_list_matched = search_subgraph(graph, subgraph, verbose=verbose)
-    subgraph_list_matched_dict[label] = subgraph_list_matched
+        logger.info(vars(args))
+    if not args.jsons and not args.templates and not args.pys:
+        raise ValueError(
+            "One of json files, template subgraph variables or python files must be specified!"
+        )
 
-for label, subgraph_list in subgraph_list_matched_dict.items():
-    # append label to each matched keys
-    for i, matched in enumerate(subgraph_list):
-        for k in matched.keys():
-            network_nodes[k]["s_label"].append(f"{label}_{i}")
+    # model_path = "./resnet18-v2-7.onnx"
+    # jsonize_mnist_onnx(model_path)
+    with open(args.model, "r") as f:
+        data = json.load(f)
+    # Prepare source graph
+    node_list = data["graph"]["node"]
+    graph, network_nodes = prepare_source_graph(node_list)
+    # save_graph(graph, "graph.png")
 
-# pprint(network_nodes)
+    # Collect query subgraphs
+    # NOTE: currently labels are given automatically and incrementally
+    query_dict = {}
+    label_counter = 0
+    if args.templates:
+        templates = set(args.templates)
+        for template_name in templates:
+            label = f"label_{label_counter}"
+            query_dict[label] = template_subgraphs.__dict__[template_name]
+            label_counter += 1
+    if args.jsons:
+        for json_path in args.jsons:
+            with open(json_path, "r") as f:
+                tmp_data = json.load(f)
+            assert isinstance(tmp_data, dict), "subgraph definition incorrect."
+            label = f"label_{label_counter}"
+            query_dict[label] = tmp_data
+            label_counter += 1
+    if args.pys:
+        for py_file in set(args.pys):
+            try:
+                spec = importlib.util.spec_from_file_location("module.name", py_file)
+                foo = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(foo)
+            except:
+                raise ValueError("Python files load error.")
+            for subgraph_name in foo.__all__:
+                label = f"label_{label_counter}"
+                query_dict[label] = foo.__dict__[subgraph_name]
+                label_counter += 1
+
+    subgraph_list_matched_dict = {}
+    for label, subgraph in query_dict.items():
+        if verbose:
+            logger.info(f"Searching query label: {label} ...")
+        subgraph_list_matched = search_subgraph(
+            graph, subgraph, network_nodes, verbose=verbose
+        )
+        subgraph_list_matched_dict[label] = subgraph_list_matched
+
+    for label, subgraph_list in subgraph_list_matched_dict.items():
+        # append label to each matched keys
+        for i, matched in enumerate(subgraph_list):
+            for k in matched.keys():
+                network_nodes[k]["s_label"].append(f"{label}_{i}")
+
+    # pprint(network_nodes)
+
+
+if __name__ == "__main__":
+    logger = setup_logger(__name__)
+    main()
