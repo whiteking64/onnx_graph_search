@@ -65,7 +65,11 @@ def search_type(subgraph_map_list, src_nodes_dict, query_nodes_dict):
 
 
 def search_subgraph(graph, subgraph):
-    assert "src" in subgraph
+    assert subgraph.get("src", {}) == {
+        "input": ["input"],
+        "output": ["input"],
+        "opType": "None",
+    }, 'The subgraph must contain an input node named "src"'
     query_graph = nx.DiGraph()
     for key in subgraph.keys():
         query_graph.add_node(key)
