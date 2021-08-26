@@ -5,6 +5,7 @@ import argparse
 import gc
 import importlib
 import json
+import logging
 from typing import DefaultDict
 
 import matplotlib.pyplot as plt
@@ -57,6 +58,35 @@ parser.add_argument(
 )
 
 
+def setup_logger(name, logfile=None):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    # create console handler with a INFO log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch_formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
+    ch.setFormatter(ch_formatter)
+
+    # create file handler which logs even DEBUG messages
+    fh = None
+    if logfile:
+        fh = logging.FileHandler(logfile)
+        fh.setLevel(logging.DEBUG)
+        fh_formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(filename)s - %(name)s - %(funcName)s - %(message)s"
+        )
+        fh.setFormatter(fh_formatter)
+
+    # add the handlers to the logger
+    logger.addHandler(ch)
+    if logfile:
+        logger.addHandler(fh)
+    return logger
+
+
 def jsonize_mnist_onnx(model_path):
     model = onnx.load(model_path)
     j = MessageToJson(model)
@@ -106,7 +136,8 @@ def search_type(subgraph_map_list, src_nodes_dict, query_nodes_dict):
     return subgraph_list_matched
 
 
-def search_subgraph(graph, subgraph):
+def search_subgraph(graph, subgraph, **kwargs):
+    verbose = kwargs.get("verbose", False)
     assert subgraph.get("src", {}) == {
         "input": ["input"],
         "output": ["input"],
@@ -120,10 +151,12 @@ def search_subgraph(graph, subgraph):
     # save_graph(query_graph, "query_graph.png")
 
     subgraph_list = search_basic(graph, query_graph)
-    print(len(subgraph_list))
+    if verbose:
+        logger.info(f"\tStructure match: {len(subgraph_list)}")
 
     subgraph_list_matched = search_type(subgraph_list, network_nodes, subgraph)
-    print(len(subgraph_list_matched))
+    if verbose:
+        logger.info(f"\tType match: {len(subgraph_list_matched)}")
 
     return subgraph_list_matched
 
@@ -148,8 +181,12 @@ def prepare_source_graph(node_list):
     return graph, network_nodes
 
 
+logger = setup_logger(__name__)
+
 args = parser.parse_args()
-print(vars(args))
+verbose = args.verbose
+if verbose:
+    logger.info(vars(args))
 if not args.jsons and not args.templates and not args.pys:
     raise ValueError(
         "One of json files, template subgraph variables or python files must be specified!"
@@ -197,7 +234,9 @@ if args.pys:
 
 subgraph_list_matched_dict = {}
 for label, subgraph in query_dict.items():
-    subgraph_list_matched = search_subgraph(graph, subgraph)
+    if verbose:
+        logger.info(f"Searching query label: {label} ...")
+    subgraph_list_matched = search_subgraph(graph, subgraph, verbose=verbose)
     subgraph_list_matched_dict[label] = subgraph_list_matched
 
 for label, subgraph_list in subgraph_list_matched_dict.items():
