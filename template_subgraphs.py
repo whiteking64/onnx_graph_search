@@ -1,3 +1,11 @@
+__all__ = [
+    "resblock_m",
+    "resblock_plain",
+    "resblock_bottleneck",
+    "resblock_preact",
+    "resblock_postact",
+]
+
 resblock_m = {
     "src": {
         "input": ["input"],

@@ -1,6 +1,7 @@
 """Python script for searching an identical subgraph in an onnx mode
 """
 
+import argparse
 import gc
 import json
 from typing import DefaultDict
@@ -13,6 +14,39 @@ from networkx.drawing.nx_pydot import graphviz_layout
 from pprint import pprint
 
 import template_subgraphs
+
+
+template_subgraph_names = sorted(name for name in template_subgraphs.__all__)
+
+parser = argparse.ArgumentParser(description="ONNX model subgraph search")
+parser.add_argument(
+    "-m",
+    "--model",
+    metavar="MODEL",
+    required=True,
+    help="source model to be searched",
+)
+parser.add_argument(
+    "-j",
+    "--jsons",
+    metavar="SUBGRAPHS",
+    nargs="*",
+    help="json files of query subgraph definitions",
+)
+parser.add_argument(
+    "-t",
+    "--templates",
+    metavar="TEMPLATE",
+    nargs="*",
+    default=["resblock_plain"],
+    choices=template_subgraph_names,
+    help="template subgraph architecture: "
+    + " | ".join(template_subgraph_names)
+    + " (default: [resblock_plain])",
+)
+parser.add_argument(
+    "-v", "--verbose", dest="verbose", action="store_true", help="verbose mode"
+)
 
 
 def jsonize_mnist_onnx(model_path):
@@ -89,13 +123,20 @@ def search_subgraph(graph, subgraph):
 # model_path = "./resnet18-v2-7.onnx"
 # jsonize_mnist_onnx(model_path)
 
-with open("resnet18.json", "r") as f:
+args = parser.parse_args()
+print(vars(args))
+if not args.jsons and not args.templates:
+    raise ValueError(
+        "Either json files or template subgraph variables must be specified!"
+    )
+
+with open(args.model, "r") as f:
     data = json.load(f)
 
-print(data.keys())
-print(data["graph"].keys())
-print(data["graph"]["name"])
-print(len(data["graph"]["node"]))
+# print(data.keys())
+# print(data["graph"].keys())
+# print(data["graph"]["name"])
+# print(len(data["graph"]["node"]))
 node_list = data["graph"]["node"]
 
 graph = nx.DiGraph()
@@ -116,14 +157,31 @@ gc.collect()
 graph = add_edges(graph, network_nodes)
 # save_graph(graph, "graph.png")
 
+# Collect query subgraphs
+# NOTE: currently labels are given automatically and incrementally
+query_dict = {}
+label_counter = 0
+if args.templates:
+    print(args.templates)
+    templates = set(args.templates)
+    # print(templates)
+    for template_name in templates:
+        label = f"label_{label_counter}"
+        query_dict[label] = template_subgraphs.__dict__[template_name]
+        label_counter += 1
+if args.jsons:
+    for json_path in args.jsons:
+        with open(json_path, "r") as f:
+            tmp_data = json.load(f)
+        assert isinstance(tmp_data, dict), "subgraph definition incorrect."
+        label = f"label_{label_counter}"
+        query_dict[label] = tmp_data
+        label_counter += 1
+# TODO: support loading custom subgraph definitions from pytho files
 query_node_resblock_2 = template_subgraphs.resblock_plain
 del query_node_resblock_2["relu_2"]
 query_node_resblock_2["add_1"]["output"] = ["output"]
-
-query_dict = {
-    "resblock_1": template_subgraphs.resblock_postact,
-    "resblock_2": query_node_resblock_2,
-}
+query_dict[f"label_{label_counter}"] = query_node_resblock_2
 
 subgraph_list_matched_dict = {}
 for label, subgraph in query_dict.items():
