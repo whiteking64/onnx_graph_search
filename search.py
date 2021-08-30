@@ -1,4 +1,11 @@
 """Python script for searching an identical subgraph in an onnx mode
+    TODO:
+        + add license
+        + visualization with labels
+        + add basic attributes including node depth
+        + pool several example source graphs
+        + discovering frequent subgraphs, given several source graphs
+        + support pytorch graphs
 """
 
 import argparse
